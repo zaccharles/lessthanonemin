@@ -1,0 +1,43 @@
+service: lessthanonemin
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  eventBridge:
+    useCloudFormation: true
+  iam:
+    role:
+      statements:
+        - Effect: 'Allow'
+          Action:
+            - 'sqs:ReceiveMessage'
+            - 'sqs:SendMessage'
+          Resource: !GetAtt Queue.Arn
+
+functions:
+  everyminute:
+    handler: everyminute.handle
+    events:
+      - eventBridge:
+          schedule: rate(1 minute)
+    environment:
+      RATE_IN_SECONDS: 10
+      QUEUE_URL: !Ref Queue
+
+  interval:
+    handler: interval.handle
+    reservedConcurrency: 1
+    events:
+      - sqs:
+          arn: !GetAtt Queue.Arn
+          batchSize: 10
+
+resources:
+  Resources:
+    Queue: 
+      Type: AWS::SQS::Queue
+      Properties: 
+        MessageRetentionPeriod: 70
